@@ -3,22 +3,21 @@ from perfis.models import Perfil, Convite
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import permission_required
 
-
 from rest_framework import viewsets, response, status, exceptions
 from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
-from rest_framework.get_permissions import AllowAny
+from rest_framework.permissions import AllowAny
+
+from .serializers import PerfilSerializer, PerfilSimplificadoSerializer, ConviteSerializer
 
 
-
-
-class PerfilViewSet(viewsets.ModelViewset):
+class PerfilViewSet(viewsets.ModelViewSet):
 	queryset = Perfil.objects.all()
-	serializer_class = None
+	serializer_class = PerfilSerializer
 
 	def get_serializer_class(self):
-		if self.request.method == 'GET'
-			return None
+		if self.request.method == 'GET':
+			return PerfilSimplificadoSerializer
 		return super().get_serializer_class()
 
 	def get_permissions(self):
@@ -32,7 +31,7 @@ class PerfilViewSet(viewsets.ModelViewset):
 def get_convites(request, *args, **kwargs):
 	perfil_logado = get_perfil_logado(request)
 	convites = Convite.objects.filter(convidado = perfil_logado)
-	serializer = None
+	serializer = ConviteSerializer(convites, many=True)
 	return response.Response(serializer.data, status =status.HTTP_200_OK)
 
 @api_view(['POST'])
@@ -63,55 +62,12 @@ def aceitar(request, *args, **kwargs):
 	status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
-renderer_classes((JSONRenderer, BrowsableAPIRenderer))
+@renderer_classes((JSONRenderer, BrowsableAPIRenderer))
 def get_meu_perfil(request, *args, **kwargs):
 	perfil_logado = get_perfil_logado(request)
-	serializer = None
+	serializer = PerfilSerializer(perfil_logado)
 	return response.Response(serializer.data, satus=status.HTTP_200_OK)
-
-
-@login_required
-def index(request):
-	return render(request, 'index.html', {'perfis': Perfil.objects.all(), 'perfil_logado': get_perfil_logado(request)})
-
-@login_required
-def exibir(request, perfil_id):	
-	perfil = Perfil.objects.get(id=perfil_id)
-
-	perfil_logado = get_perfil_logado(request)
-	ja_e_contato = perfil in perfil_logado.contatos.all()
-	
-	return render(request, 'perfil.html', {'perfil':perfil, "ja_e_contato":ja_e_contato})
-
-@login_required
-def convidar(request, perfil_id):
-	perfil_a_convidar = Perfil.objects.get(id=perfil_id)
-	perfil_logado = get_perfil_logado(request)
-	perfil_logado.convidar(perfil_a_convidar)
-	return redirect('index')
-
-@login_required
-def aceitar(request, convite_id):
-	convite = Convite.objects.get(id=convite_id)
-	convite.aceitar()
-	return redirect('index')
 
 @login_required
 def get_perfil_logado(request):
 	return request.user.perfil
-
-@permission_required('perfis.add_convite', raise_exception=True)
-@login_required
-
-def convidar (request, perfil_id):
-	perfil_a_convidar = Perfil.objects.get(id=perfil_id)
-	perfil_logado = get_perfil_logado(request)
-	perfil_logado.convidar(perfil_a_convidar)
-	return redirect('index')
-
-def index(request):
-	print(request.user.username)
-	print(request.user.email)
-	print(request.user.has_perm('perfis.add_convite'))
-
-	return render(request,'index.html',{'perfis' : Perfil.objects.all(), 'perfil_logado' : get_perfil_logado(request) })
